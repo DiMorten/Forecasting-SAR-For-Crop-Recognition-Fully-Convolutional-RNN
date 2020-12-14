@@ -7,7 +7,12 @@ import pdb
 import sys
 #sys.path.append('../../../../../train_src/analysis/')
 import pathlib
-from PredictionsLoader import PredictionsLoaderNPY, PredictionsLoaderModel
+from keras.models import *
+from keras.layers import *
+from keras.optimizers import *
+from keras.models import Model
+
+from PredictionsLoader import PredictionsLoaderNPY, PredictionsLoaderModel,PredictionsLoaderModelForecasting
 from utils import seq_add_padding, add_padding
 
 parser = argparse.ArgumentParser(description='')
@@ -23,7 +28,7 @@ model_type=a.model_type
 
 direct_execution=True
 if direct_execution==True:
-	dataset='cv'
+	dataset='lm'
 	model_type='unet'
 
 
@@ -49,7 +54,7 @@ if dataset=='lm':
 	elif model_type=='convlstm':
 		predictions_path=path+'prediction_ConvLSTM_seq2seq_batch16_full.npy'
 	elif model_type=='unet':
-		predictions_path=path+'prediction_BUnet4ConvLSTM_repeating1.npy'
+		predictions_path=path+'model_best_BUnet4ConvLSTM_lem_regression2.h5'
 		#predictions_path=path+'prediction_BUnet4ConvLSTM_repeating2.npy'
 		#predictions_path=path+'prediction_BUnet4ConvLSTM_repeating4.npy'
 
@@ -123,45 +128,17 @@ elif dataset=='cv':
 				   [45, 150, 255]])
 
 print("Loading patch locations...")
-order_id_load=False
-if order_id_load==False:
-	order_id=patch_file_id_order_from_folder(folder_load_path)
-	np.save('order_id.npy',order_id)
-else:
-	order_id=np.load('order_id.npy')
-
-cols=np.load(location_path+'locations_col.npy')
-rows=np.load(location_path+'locations_row.npy')
-
-print(cols.shape, rows.shape)
-cols=cols[order_id]
-rows=rows[order_id]
 
 # ======== load labels and predictions 
 
 #labels=np.load(path+'labels.npy').argmax(axis=4)
 #predictions=np.load(predictions_path).argmax(axis=4)
 
-print("Loading labels and predictions...")
-
-prediction_type = 'model'
-results_path="../"
-#path=results_path+dataset+'/'
-#prediction_path=path+predictions_path
+print("Loading model...")
 path_test='../../../../../dataset/dataset/'+dataset+'_data/patches_bckndfixed/test/'
-print('path_test',path_test)
-
-#prediction_type = 'model'
-if prediction_type=='npy':
-	predictionsLoader = PredictionsLoaderNPY()
-	predictions, labels = predictionsLoader.loadPredictions(predictions_path,path+'labels.npy')
-elif prediction_type=='model':	
-	#model_path=results_path + 'model/'+dataset+'/'+prediction_filename
-	print('model_path',predictions_path)
-
-	predictionsLoader = PredictionsLoaderModel(path_test)
-	_, labels, model = predictionsLoader.loadPredictions(predictions_path)
-	
+predictionsLoader = PredictionsLoaderModelForecasting(path_test)
+print('model_path',predictions_path)
+model=load_model(predictions_path, compile=False)
 
 #================= load labels and predictions
 
@@ -190,14 +167,19 @@ elif prediction_type=='model':
 
 # Load mask
 mask=cv2.imread(mask_path,-1)
-mask[mask==1]=0 # training as background
+mask[mask==2]=0 # testing as background... maybe later not?
 print("Mask shape",mask.shape)
 #print((sequence_len,)+mask.shape)
 
 # ================= LOAD THE INPUT IMAGE.
-full_path = '../../../../../dataset/dataset/cv_data/full_ims/' 
-full_ims_test = np.load(full_path+'full_ims_test.npy')
-full_label_test = np.load(full_path+'full_label_test.npy').astype(np.uint8)
+full_path = '../../../../../dataset/dataset/'+dataset+'_data/full_ims/' 
+full_ims_test = np.load(full_path+'full_ims_train.npy') # shape (t_len, h, w, channel_n)
+
+
+test_x = full_ims_test[:-1] # t len 12. shape (12, h, w, channel_n)
+test_y = full_ims_test[-1] # t len 1. shape (h, w, channel_n)
+
+full_label_test = np.load(full_path+'full_label_train.npy').astype(np.uint8)
 
 # convert labels; background is last
 class_n=len(np.unique(full_label_test))-1
@@ -226,7 +208,7 @@ print(np.unique(full_label_test,return_counts=True))
 
 sequence_len, row, col, bands = full_ims_test.shape
 #pdb.set_trace()
-prediction_rebuilt=np.ones((sequence_len,row,col)).astype(np.uint8)*255
+prediction_rebuilt=np.ones((1,row,col,bands)).astype(np.float16)
 
 
 print("stride", stride)
@@ -236,18 +218,26 @@ for m in range(patch_size//2,row-patch_size//2,stride):
 	for n in range(patch_size//2,col-patch_size//2,stride):
 		patch_mask = mask_pad[m-patch_size//2:m+patch_size//2 + patch_size%2,
 					n-patch_size//2:n+patch_size//2 + patch_size%2]
-		if np.any(patch_mask==2):			
+		if np.any(patch_mask==1):			
 			patch = full_ims_test[:,m-patch_size//2:m+patch_size//2 + patch_size%2,
 						n-patch_size//2:n+patch_size//2 + patch_size%2]
-			patch = np.expand_dims(patch, axis = 0)
+			patch = np.expand_dims(patch, axis = 0) # shape (1,t_len,h,w,channels)
 			#patch = patch.reshape((1,patch_size,patch_size,bands))
-			
-			pred_cl = model.predict(patch).argmax(axis=-1)
+			pred_cl, model = predictionsLoader.predictOnePatch(model, patch[:,:-1]) #input is length t_len-1 (1,h,w,channel_n)
+#			pred_cl = model.predict(patch).argmax(axis=-1)
 	#		print(pred_cl.shape)
 
-			_, _, x, y = pred_cl.shape
+			_, x, y, _ = pred_cl.shape
 				
 			prediction_rebuilt[:,m-stride//2:m+stride//2,n-stride//2:n+stride//2] = pred_cl[:,overlap//2:x-overlap//2,overlap//2:y-overlap//2]
+pdb.set_trace()
+
+np.save('prediction_rebuilt.npy',prediction_rebuilt)
+# get RMSE
+
+
+
+
 del full_ims_test
 label_rebuilt=full_label_test.copy()
 

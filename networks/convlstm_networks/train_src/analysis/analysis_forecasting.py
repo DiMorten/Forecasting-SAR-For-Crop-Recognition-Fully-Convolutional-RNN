@@ -208,7 +208,7 @@ def experiment_analyze(small_classes_ignore,dataset='cv',
 		model_path=base_path + 'model/'+dataset+'/'+prediction_filename
 		print('model_path',model_path)
 
-		predictionsLoader = PredictionsLoaderModel(path_test)
+		predictionsLoader = PredictionsLoaderModelForecasting(path_test)
 		predictions, label_test = predictionsLoader.loadPredictions(model_path)
 	
 	#predictions=np.load(prediction_path, allow_pickle=True)

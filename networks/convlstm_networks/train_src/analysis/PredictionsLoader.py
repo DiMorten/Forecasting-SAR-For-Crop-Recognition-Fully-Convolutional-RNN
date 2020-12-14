@@ -49,6 +49,27 @@ class PredictionsLoaderModel(PredictionsLoader):
 
 class PredictionsLoaderModelForecasting(PredictionsLoaderModel):
 	def predictSequence(self,model,x):
+		# x: shape (patches_n, t_len, h, w, channel_n)
+		batch_size = 16
+		patches_n, t_len, h, w, channel_n = x.shape # t_len is 12 
+		batch_n = patches_n // batch_size
+		prediction = np.zeros((patches_n,1,h,w,channel_n))
+		for batch_id in range(batch_n):
+		
+			idx0 = batch_id*batch_size
+			idx1 = (batch_id+1)*batch_size
+
+			batch_x_part1 = x[idx0:idx1,:-1]
+			prediction[idx0:idx1,:-1] = model.predict(batch_x_part1)
+			
+			batch_x_part2 = batch_x_part1.copy()
+			batch_x_part2[:,0] = x[idx0:idx1,-1] # only first t_step is used here
+			
+			prediction[idx0:idx1,0] = model.predict(batch_x_part2)[:,0]
+			model.reset_states()
+		return prediction
+
+
 		
 	def loadPredictions(self,path_model):
 		print("============== loading model =============")
@@ -56,14 +77,12 @@ class PredictionsLoaderModelForecasting(PredictionsLoaderModel):
 		print("Model", model)
 		test_in=np.load(self.path_test+'patches_in.npy',mmap_mode='r')
 		
-		test_x = test_in[:,:-1]
-		test_y = test_in[:,-1]
-
-		
-		#test_label=np.load(self.path_test+'patches_label.npy')
+		test_x = test_in[:,:-1] # t len 12.
+		test_y = test_in[:,-1] # t len 1. shape (patches_n, h, w, channel_n)
+		test_y = np.expand_dims(test_y,axis=1) # (patches_n, 1, h, w, channel_n)
 
 		test_predictions = self.predictSequence(model,test_x)
-		print(test_in.shape, test_label.shape, test_predictions.shape)
+		print(test_in.shape, test_y.shape, test_predictions.shape)
 		print("Test predictions dtype",test_predictions.dtype)
 		del test_in
-		return test_predictions, test_label
+		return test_predictions, test_y
