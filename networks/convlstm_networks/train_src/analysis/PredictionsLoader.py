@@ -46,3 +46,24 @@ class PredictionsLoaderModel(PredictionsLoader):
 		print("Test predictions dtype",test_predictions.dtype)
 		del test_in
 		return test_predictions, test_label
+
+class PredictionsLoaderModelForecasting(PredictionsLoaderModel):
+	def predictSequence(self,model,x):
+		
+	def loadPredictions(self,path_model):
+		print("============== loading model =============")
+		model=load_model(path_model, compile=False)
+		print("Model", model)
+		test_in=np.load(self.path_test+'patches_in.npy',mmap_mode='r')
+		
+		test_x = test_in[:,:-1]
+		test_y = test_in[:,-1]
+
+		
+		#test_label=np.load(self.path_test+'patches_label.npy')
+
+		test_predictions = self.predictSequence(model,test_x)
+		print(test_in.shape, test_label.shape, test_predictions.shape)
+		print("Test predictions dtype",test_predictions.dtype)
+		del test_in
+		return test_predictions, test_label

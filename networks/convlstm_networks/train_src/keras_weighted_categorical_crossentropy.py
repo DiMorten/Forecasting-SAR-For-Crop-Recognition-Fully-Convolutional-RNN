@@ -5,6 +5,17 @@ A weighted version of categorical_crossentropy for keras (2.0.6). This lets you 
 """
 from keras import backend as K
 import tensorflow as tf
+
+def rmse():
+    def f_reg(y_true, y_pred):
+        y_true = K.flatten(y_true)
+        y_pred =  K.flatten(y_pred)
+        error = y_pred - y_true
+        #error = tf.gather(error, tf.where(tf.not_equal(y_true, 0.0)))
+        return K.sqrt(K.mean(K.square(error)))
+    return f_reg
+
+
 def weighted_categorical_crossentropy(weights):
     """
     A weighted version of keras.objectives.categorical_crossentropy

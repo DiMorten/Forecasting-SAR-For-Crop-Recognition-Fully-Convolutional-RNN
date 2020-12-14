@@ -21,14 +21,14 @@ from keras import metrics
 import sys
 import glob
 
-from sklearn.metrics import confusion_matrix,f1_score,accuracy_score,classification_report
+from sklearn.metrics import confusion_matrix,f1_score,accuracy_score,classification_report,mean_squared_error
 # Local
 from densnet import DenseNetFCN
 from densnet_timedistributed import DenseNetFCNTimeDistributed
 
 from metrics import fmeasure,categorical_accuracy
 import deb
-from keras_weighted_categorical_crossentropy import weighted_categorical_crossentropy, sparse_accuracy_ignoring_last_label, weighted_categorical_crossentropy_ignoring_last_label, categorical_focal_ignoring_last_label, weighted_categorical_focal_ignoring_last_label
+from keras_weighted_categorical_crossentropy import weighted_categorical_crossentropy, sparse_accuracy_ignoring_last_label, weighted_categorical_crossentropy_ignoring_last_label, categorical_focal_ignoring_last_label, weighted_categorical_focal_ignoring_last_label, rmse
 from keras.models import load_model
 from keras.layers import ConvLSTM2D, UpSampling2D, multiply
 from keras.utils.vis_utils import plot_model
@@ -378,15 +378,15 @@ class Dataset(NetObject):
 		pathlib.Path(self.path[split]).mkdir(parents=True, exist_ok=True) 
 
 		
-		np.save(self.path[split]/'patches_in.npy', patches['in']) #to-do: add polymorphism for other types of input 
+		np.save(self.path[split]+'patches_in.npy', patches['in']) #to-do: add polymorphism for other types of input 
 		
 		#pathlib.Path(self.path[split]['label']).mkdir(parents=True, exist_ok=True) 
-		np.save(self.path[split]/'patches_label.npy', patches['label']) #to-do: add polymorphism for other types of input 
+		np.save(self.path[split]+'patches_label.npy', patches['label']) #to-do: add polymorphism for other types of input 
 
 	def patchesLoad(self, split='train'):
 		out={}
-		out['in']=np.load(self.path[split]/'patches_in.npy',mmap_mode='r')
-		out['label']=np.load(self.path[split]/'patches_label.npy')
+		out['in']=np.load(self.path[split]+'patches_in.npy',mmap_mode='r')
+		out['label']=np.load(self.path[split]+'patches_label.npy')
 		#pdb.set_trace()
 		return out
 
@@ -446,50 +446,42 @@ class Dataset(NetObject):
 		out=np.reshape(out,((out.shape[0],)+label_shape[1:]))
 		return out
 
-	def metrics_get(self,prediction, label,ignore_bcknd=True,debug=2): #requires batch['prediction'],batch['label']
+	def metrics_get(self,prediction, label,mask,ignore_bcknd=True,debug=2): #requires batch['prediction'],batch['label']
+		#mask[mask>0]=1
+		mask=mask.argmax(axis=-1)
+		mask_tmp=mask.copy()
+#		patch_n, t_len, h, w = mask.shape()
+#		mask2=np.zeros((patch_n, t_len, h, w, self.channel_n),dtype=np.uint8)
+		deb.prints(np.unique(mask_tmp,return_counts=True))
+		mask[mask_tmp!=self.class_n-1]=1
+		mask[mask_tmp==self.class_n-1]=0
+		deb.prints(np.unique(mask,return_counts=True))
+
+
+		mask=np.expand_dims(mask,axis=-1)
+		mask = np.repeat(mask,2,axis=-1)
+#		mask2[:,:,:,:,0]=mask.copy()
+#		mask2[:,:,:,:,1]=mask.copy()
+
+
+		
 		print("======================= METRICS GET")
-		class_n=prediction.shape[-1]
-		#print("label unque at start of metrics_get",
-		#	np.unique(label.argmax(axis=4),return_counts=True))
-		
-
-		#label[label[:,],:,:,:,:]
-		#data['label_copy']=data['label_copy'][:,:,:,:,:-1] # Eliminate bcknd dimension after having eliminated bcknd samples
-		
-		#print("label_copy unque at start of metrics_get",
-	#		np.unique(data['label_copy'].argmax(axis=4),return_counts=True))
-		deb.prints(prediction.shape,debug,2)
-		deb.prints(label.shape,debug,2)
-		#deb.prints(data['label_copy'].shape,debug,2)
-
-
-		prediction=prediction.argmax(axis=np.ndim(prediction)-1) #argmax de las predicciones. Softmax no es necesario aqui.
-		deb.prints(prediction.shape)
-		prediction=np.reshape(prediction,-1) #convertir en un vector
-		deb.prints(prediction.shape)
-		label=label.argmax(axis=np.ndim(label)-1) #igualmente, sacar el maximo valor de los labels (se pierde la ultima dimension; saca el valor maximo del one hot encoding es decir convierte a int)
-		label=np.reshape(label,-1) #flatten
-		prediction=prediction[label<class_n] #logic
-		label=label[label<class_n] #logic
-
-		#============= TEST UNIQUE PRINTING==================#
-		unique,count=np.unique(label,return_counts=True)
-		print("Metric real unique+1,count",unique+1,count)
-		unique,count=np.unique(prediction,return_counts=True)
-		print("Metric prediction unique+1,count",unique+1,count)
-		
-		#========================METRICS GET================================================#
+		print("self classn",self.class_n)
+		print("Prediction, label and mask shape",prediction.shape,label.shape,mask.shape)
+		prediction = prediction.flatten()
+		label = label.flatten()
+		mask=mask.flatten()
+		print("Prediction and label shape after flatten",prediction.shape,label.shape)
 
 		metrics={}
-		metrics['f1_score']=f1_score(label,prediction,average='macro')
-		metrics['f1_score_weighted']=f1_score(label,prediction,average='weighted')
-		metrics['overall_acc']=accuracy_score(label,prediction)
-		metrics['confusion_matrix']=confusion_matrix(label,prediction)
-		#print(confusion_matrix_)
-		metrics['per_class_acc']=(metrics['confusion_matrix'].astype('float') / metrics['confusion_matrix'].sum(axis=1)[:, np.newaxis]).diagonal()
-		acc=metrics['confusion_matrix'].diagonal()/np.sum(metrics['confusion_matrix'],axis=1)
-		acc=acc[~np.isnan(acc)]
-		metrics['average_acc']=np.average(metrics['per_class_acc'][~np.isnan(metrics['per_class_acc'])])
+		metrics['rmse_nomask']=mean_squared_error(label,prediction,squared=False)
+		
+		prediction = prediction[mask!=0]
+		label = label[mask!=0]
+		print("Prediction and label shape after removal of bcknd",prediction.shape,label.shape)
+
+		metrics['rmse']=mean_squared_error(label,prediction,squared=False)
+		
 
 		return metrics
 
@@ -816,7 +808,7 @@ class NetModel(NetObject):
 		
 		self.eval_mode = eval_mode
 		self.epochs = epochs
-		self.early_stop={'best':0,
+		self.early_stop={'best':10000,
 					'count':0,
 					'signal':False,
 					'patience':patience}
@@ -946,7 +938,11 @@ class NetModel(NetObject):
 
 	def build(self):
 		deb.prints(self.t_len)
-		in_im = Input(shape=(self.t_len,self.patch_len, self.patch_len, self.channel_n))
+		#in_im = Input(shape=(self.t_len,self.patch_len, self.patch_len, self.channel_n),
+		#	batch_size=self.batch['train']['size'])
+		in_im = Input(batch_shape=(self.batch['train']['size'],
+			self.t_len,self.patch_len, self.patch_len, self.channel_n))
+
 		weight_decay=1E-4
 		def dilated_layer(x,filter_size,dilation_rate=1, kernel_size=3):
 			x = TimeDistributed(Conv2D(filter_size, kernel_size, padding='same',
@@ -1587,7 +1583,7 @@ class NetModel(NetObject):
 			e3 = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(p3)
 
 			x = Bidirectional(ConvLSTM2D(128,3,return_sequences=True,
-					padding="same"),merge_mode='concat')(e3)
+					padding="same",stateful=True),merge_mode='concat')(e3)
 
 			d3 = transpose_layer(x,fs*4)
 			d3 = keras.layers.concatenate([d3, p3], axis=4)
@@ -1598,7 +1594,7 @@ class NetModel(NetObject):
 			d1 = transpose_layer(d2,fs)
 			d1 = keras.layers.concatenate([d1, p1], axis=4)
 			out=dilated_layer(d1,fs)
-			out = TimeDistributed(Conv2D(self.class_n, (1, 1), activation=None,
+			out = TimeDistributed(Conv2D(self.channel_n, (1, 1), activation=None,
 										padding='same'))(out)
 			self.graph = Model(in_im, out)
 			print(self.graph.summary())
@@ -1633,7 +1629,7 @@ class NetModel(NetObject):
 			d1 = transpose_layer(d2,fs)
 			d1 = keras.layers.concatenate([d1, x_p1], axis=4)
 			out = dilated_layer(d1,fs)
-			out = TimeDistributed(Conv2D(self.class_n, (1, 1), activation=None,
+			out = TimeDistributed(Conv2D(self.channel_n, (1, 1), activation=None,
 										padding='same'))(out)
 			self.graph = Model(in_im, out)
 			print(self.graph.summary())
@@ -2360,9 +2356,9 @@ class NetModel(NetObject):
 
 		self.train_loop(data)
 
-	def early_stop_check(self,metrics,epoch,most_important='overall_acc'):
+	def early_stop_check(self,metrics,epoch,most_important='rmse'):
 
-		if metrics[most_important]>=self.early_stop['best'] and self.early_stop["signal"]==False:
+		if metrics[most_important]<self.early_stop['best'] and self.early_stop["signal"]==False:
 			self.early_stop['best']=metrics[most_important]
 			self.early_stop['count']=0
 			print("Best metric updated")
@@ -2402,7 +2398,7 @@ class NetModel(NetObject):
 		print("Test count,unique",count,unique)
 		
 		#==================== ESTIMATE BATCH NUMBER===============================#
-		prediction_dtype=np.float32
+		prediction_dtype=np.float16
 #		prediction_dtype=np.int16
 #		prediction_dtype=np.int8
 
@@ -2411,7 +2407,7 @@ class NetModel(NetObject):
 		self.batch['test']['n'] = data.patches['test']['in'].shape[0] // self.batch['test']['size']
 		self.batch['val']['n'] = data.patches['val']['in'].shape[0] // self.batch['val']['size']
 
-		data.patches['test']['prediction']=np.zeros_like(data.patches['test']['label'][:,:,:,:,:-1], dtype=prediction_dtype)
+		data.patches['test']['prediction']=np.zeros_like(data.patches['test']['in'][:,:-2], dtype=prediction_dtype)
 		deb.prints(data.patches['test']['label'].shape)
 		deb.prints(self.batch['test']['n'])
 		
@@ -2446,8 +2442,9 @@ class NetModel(NetObject):
 				if self.time_measure==True:
 					start_time=time.time()
 				self.metrics['train']['loss'] += self.graph.train_on_batch(
-					batch['train']['in'].astype(np.float32), 
-					np.expand_dims(batch['train']['label'].argmax(axis=4),axis=4).astype(np.int8))		# Accumulated epoch
+					batch['train']['in'][:,0:-2].astype(np.float16), 
+					batch['train']['in'][:,1:-1].astype(np.float16))		# Accumulated epoch
+				self.graph.reset_states()
 				if self.time_measure==True:
 					batch_time=time.time()-start_time
 					print(batch_time)
@@ -2463,7 +2460,7 @@ class NetModel(NetObject):
 			#================== VAL LOOP=====================#
 			if self.val_set:
 				deb.prints(data.patches['val']['label'].shape)
-				data.patches['val']['prediction']=np.zeros_like(data.patches['val']['label'][:,:,:,:,:-1],dtype=prediction_dtype)
+				data.patches['val']['prediction']=np.zeros_like(data.patches['val']['in'][:,:-2],dtype=prediction_dtype)
 				self.batch_test_stats=False
 
 				for batch_id in range(0, self.batch['val']['n']):
@@ -2474,15 +2471,19 @@ class NetModel(NetObject):
 					batch['val']['label'] = data.patches['val']['label'][idx0:idx1]
 
 					if self.batch_test_stats:
-						self.metrics['val']['loss'] += self.graph.test_on_batch(
-							batch['val']['in'].astype(np.float32), 
-							np.expand_dims(batch['val']['label'].argmax(axis=4),axis=4).astype(np.int8))		# Accumulated epoch
-
+						self.metrics['val']['loss'] += self.graph.test_on_batch(							
+							batch['val']['in'][:,0:-2].astype(np.float16), 
+							batch['val']['in'][:,1:-1].astype(np.float16))	
+						self.graph.reset_states()
 					data.patches['val']['prediction'][idx0:idx1]=(self.graph.predict(
-						batch['val']['in'].astype(np.float32),batch_size=self.batch['val']['size'])*13).astype(prediction_dtype)
+						batch['val']['in'][:,0:-2].astype(np.float16),batch_size=self.batch['val']['size'])).astype(prediction_dtype)
+					self.graph.reset_states()
 				self.metrics['val']['loss'] /= self.batch['val']['n']
 
-				metrics_val=data.metrics_get(data.patches['val']['prediction'],data.patches['val']['label'],debug=2)
+				metrics_val=data.metrics_get(data.patches['val']['prediction'],
+				data.patches['val']['in'][:,1:-1],
+				data.patches['val']['label'][:,1:-1],
+				debug=2)
 
 				self.early_stop_check(metrics_val,epoch)
 				#if epoch==1000 or epoch==700 or epoch==500 or epoch==1200:
@@ -2492,9 +2493,7 @@ class NetModel(NetObject):
 				#if self.early_stop['signal']==True:
 				#	self.graph.save('model_'+str(epoch)+'.h5')
 
-				metrics_val['per_class_acc'].setflags(write=1)
-				metrics_val['per_class_acc'][np.isnan(metrics_val['per_class_acc'])]=-1
-				print(metrics_val['per_class_acc'])
+				deb.prints(metrics_val['rmse'])
 				
 				# if epoch % 5 == 0:
 				# 	print("Writing val...")
@@ -2524,7 +2523,7 @@ class NetModel(NetObject):
 			if test_loop_each_epoch==True or self.early_stop['signal']==True or (self.stop_epoch>=0 and self.stop_epoch==epoch):
 				
 				print("======== BEGINNING TEST PREDICT... ============")
-				data.patches['test']['prediction']=np.zeros_like(data.patches['test']['label'][:,:,:,:,:-1],dtype=prediction_dtype)#.astype(prediction_dtype)
+				data.patches['test']['prediction']=np.zeros_like(data.patches['test']['in'][:,:-2],dtype=prediction_dtype)#.astype(prediction_dtype)
 				self.batch_test_stats=False
 
 				for batch_id in range(0, self.batch['test']['n']):
@@ -2535,12 +2534,24 @@ class NetModel(NetObject):
 					batch['test']['label'] = data.patches['test']['label'][idx0:idx1]
 
 					if self.batch_test_stats:
-						self.metrics['test']['loss'] += self.graph.test_on_batch(
-							batch['test']['in'].astype(np.float32), 
-							np.expand_dims(batch['test']['label'].argmax(axis=4),axis=4).astype(np.int16))		# Accumulated epoch
+						self.metrics['test']['loss'] += self.graph.test_on_batch(					
+							batch['test']['in'][:,0:-2].astype(np.float16), 
+							batch['test']['in'][:,1:-1].astype(np.float16))	
+						self.graph.reset_states()
 
 					data.patches['test']['prediction'][idx0:idx1]=(self.graph.predict(
-						batch['test']['in'].astype(np.float32),batch_size=self.batch['test']['size'])*13).astype(prediction_dtype)
+						batch['test']['in'][:,0:-2].astype(np.float16),batch_size=self.batch['test']['size'])).astype(prediction_dtype)
+					self.graph.reset_states()
+				if self.batch_test_stats==True:
+					# Average epoch loss
+					self.metrics['test']['loss'] /= self.batch['test']['n']
+				# Get test metrics
+				metrics=data.metrics_get(data.patches['test']['prediction'],
+					data.patches['test']['in'][:,1:-1],
+					data.patches['test']['label'][:,1:-1],
+					debug=1)
+			else:
+				metrics=metrics_val.copy()
 			#====================METRICS GET================================================#
 			deb.prints(data.patches['test']['label'].shape)	
 			deb.prints(data.patches['test']['prediction'].dtype)
@@ -2551,11 +2562,7 @@ class NetModel(NetObject):
 			deb.prints(idx1)
 			print("Epoch={}".format(epoch))	
 			
-			if self.batch_test_stats==True:
-				# Average epoch loss
-				self.metrics['test']['loss'] /= self.batch['test']['n']
-			# Get test metrics
-			metrics=data.metrics_get(data.patches['test']['prediction'],data.patches['test']['label'],debug=1)
+			
 			if test_loop_each_epoch==True:
 				print("Test metrics are printed each epoch. Metrics:",epoch,metrics)
 			
@@ -2571,42 +2578,15 @@ class NetModel(NetObject):
 				self.final_accuracy_report(data,epoch,metrics,init_time)
 				break
 				
-			# Check early stop and store results if they are the best
-			#if epoch % 5 == 0:
-			#	print("Writing to file...")
-				#for i in range(len(txt['test']['metrics'])):
-
-				#	data.metrics_write_to_txt(txt['test']['metrics'][i],np.squeeze(txt['test']['loss'][i]),
-				#		txt['test']['epoch'][i],path=self.report['best']['text_history_path'])
-			#	txt['test']['metrics']=[]
-			#	txt['test']['loss']=[]
-			#	txt['test']['epoch']=[]
-				#self.graph.save('my_model.h5')
-
-			else:
-
-				txt['test']['metrics'].append(metrics)
-				txt['test']['loss'].append(self.metrics['test']['loss'])
-				txt['test']['epoch'].append(epoch)
-
-			#data.metrics_write_to_txt(metrics,np.squeeze(self.metrics['test']['loss']),
-			#	epoch,path=self.report['best']['text_history_path'])
-			#self.test_metrics_evaluate(data.patches['test'],metrics,epoch)
-			#if self.early_stop['signal']==True:
-			#	break
 
 
-			deb.prints(metrics['confusion_matrix'])
-			#metrics['average_acc'],metrics['per_class_acc']=self.average_acc(data['prediction_h'],data['label_h'])
-			deb.prints(metrics['per_class_acc'])
+			deb.prints(metrics['rmse'])
 			if self.val_set:
-				deb.prints(metrics_val['per_class_acc'])
+				deb.prints(metrics_val['rmse'])
 			
-			print('oa={}, aa={}, f1={}, f1_wght={}'.format(metrics['overall_acc'],
-				metrics['average_acc'],metrics['f1_score'],metrics['f1_score_weighted']))
+			print('rmse={}, rmse_nomask={}'.format(metrics['rmse'],metrics_val['rmse_nomask']))
 			if self.val_set:
-				print('val oa={}, aa={}, f1={}, f1_wght={}'.format(metrics_val['overall_acc'],
-					metrics_val['average_acc'],metrics_val['f1_score'],metrics_val['f1_score_weighted']))
+				print('val rmse={}, rmse_nomask={}'.format(metrics_val['rmse'],metrics_val['rmse_nomask']))
 			if self.batch_test_stats==True:
 				if self.val_set:
 				
@@ -2664,7 +2644,7 @@ class ModelLoadEachBatch(NetModel):
 flag = {"data_create": 2, "label_one_hot": True}
 if __name__ == '__main__':
 
-	premade_split_patches_load=False
+	premade_split_patches_load=True
 	
 
 	deb.prints(premade_split_patches_load)
@@ -2813,7 +2793,7 @@ if __name__ == '__main__':
 		deb.prints(data.patches['val']['label'].shape)
 		model.loss_weights=np.load(data.path_patches_bckndfixed+'loss_weights.npy')
 
-	store_patches=True
+	store_patches=False
 	store_patches_each_sample=False
 	if store_patches==True and store_patches_each_sample==True:
 		patchesStorageEachSample = PatchesStorageEachSample(data.path['v'])
@@ -2843,15 +2823,18 @@ if __name__ == '__main__':
 
 	#=========== End of moving bcknd label from 0 to last value
 
-	metrics=['accuracy']
+	metrics=["mean_squared_error"]
+#	metrics=keras.metrics.MSE()
+
+	
 	#metrics=['accuracy',fmeasure,categorical_accuracy]
 
 
 	#loss=weighted_categorical_crossentropy_ignoring_last_label(model.loss_weights_ones)
-	loss=categorical_focal_ignoring_last_label(alpha=0.25,gamma=2)
+	#loss=categorical_focal_ignoring_last_label(alpha=0.25,gamma=2)
 	#loss=weighted_categorical_focal_ignoring_last_label(model.loss_weights,alpha=0.25,gamma=2)
-
-	model.graph.compile(loss=loss,
+	#loss = rmse()
+	model.graph.compile(loss='mean_squared_error',
 				  optimizer=adam, metrics=metrics)
 
 	model_load=False

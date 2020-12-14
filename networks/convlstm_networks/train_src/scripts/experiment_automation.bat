@@ -20,7 +20,7 @@ IF %dataset%==cv (
 	set results_path=../results/convlstm_results/model/lm/
 	set summary_save_path=../results/convlstm_results/summary/lm/
 	set dataset_path=../../../dataset/dataset/lm_data/
-	set sequence_len=13
+	set sequence_len=11
 
 	::sequence_len=11
 	set class_n=15 
@@ -39,7 +39,7 @@ echo %channel_n%
 
 
 
-set stop_epoch=-1 
+set stop_epoch=-1
 :: promote to lv2?
 
 :: ::id="blockgoer"

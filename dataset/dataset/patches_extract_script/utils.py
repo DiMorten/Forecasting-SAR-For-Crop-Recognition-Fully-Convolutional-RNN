@@ -320,13 +320,22 @@ class DataForNet(object):
 
 
 
-
 		#self.label_id=self.conf["seq"]["id_first"]+self.conf['t_len']-2 # Less 1 for python idx, less 1 for id_first starts at 1 
 	 
 		unique,count=np.unique(self.full_label_train,return_counts=True) 
 		print("Train masked unique/count",unique,count) 
 		unique,count=np.unique(self.full_label_test,return_counts=True) 
 		print("Test masked unique/count",unique,count) 
+
+		# regression
+		# self.full_label_train shape is (t,h,w,classes)
+#		self.full_ims_train[:,patch["train_mask"]==1]=0 # set last tstep as bcknd for trainig
+#		for t_step in range(self.full_ims_train.shape[0]):		
+#			self.full_ims_train[t_step,patch["train_mask"]==1]=0 # set last tstep as bcknd for trainig
+#			self.full_ims_test[t_step,patch["train_mask"]==1]=0 # we dont need this. only train ims
+		
+
+
 		# Load train mask
 		#self.conf["patch"]["overlap"]=26
 

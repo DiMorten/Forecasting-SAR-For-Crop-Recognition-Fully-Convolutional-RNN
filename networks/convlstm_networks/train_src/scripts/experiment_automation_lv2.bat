@@ -32,17 +32,17 @@ set model=BUnet4ConvLSTM
 :: set id=lem_baseline_adam_focal_lessonedate5
 :: call experiment_automation.bat %id% %model% %dataset% %dataSource%
 
-set id=lem_baseline_adam_focal_alldates2
+set id=lem_regression2
 call experiment_automation.bat %id% %model% %dataset% %dataSource%
 
-set id=lem_baseline_adam_focal_alldates3
-call experiment_automation.bat %id% %model% %dataset% %dataSource%
+:: set id=lem_baseline_adam_focal_alldates3
+:: call experiment_automation.bat %id% %model% %dataset% %dataSource%
 
-set id=lem_baseline_adam_focal_alldates4
-call experiment_automation.bat %id% %model% %dataset% %dataSource%
+:: set id=lem_baseline_adam_focal_alldates4
+:: call experiment_automation.bat %id% %model% %dataset% %dataSource%
 
-set id=lem_baseline_adam_focal_alldates5
-call experiment_automation.bat %id% %model% %dataset% %dataSource%
+:: set id=lem_baseline_adam_focal_alldates5
+:: call experiment_automation.bat %id% %model% %dataset% %dataSource%
 
 :: ===== USE MODEL
 ::. experiment_automation.sh $id 'BUnet4ConvLSTM_SkipLSTM' $dataset
