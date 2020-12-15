@@ -14,7 +14,7 @@ from keras.models import Model
 
 from PredictionsLoader import PredictionsLoaderNPY, PredictionsLoaderModel,PredictionsLoaderModelForecasting
 from utils import seq_add_padding, add_padding
-from sklearn.metrics import mean_squared_error
+from sklearn.metrics import mean_squared_error, r2_score
 import matplotlib.pyplot as plt
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('-ds', '--dataset', dest='dataset',
@@ -48,6 +48,8 @@ full_ims_test = np.load(full_path+'full_ims_train.npy') # shape (t_len, h, w, ch
 test_y = full_ims_test[-1] # t len 1. shape (h, w, channel_n)
 
 pred = np.load('prediction_rebuilt.npy') # shape (1,h,w,channel_n)
+#pred = np.load('prediction_rebuilt_stateful_uunet4convlstm.npy') # shape (1,h,w,channel_n)
+#pred = np.load('prediction_rebuilt_stateful_bunet4convlstm.npy') # shape (1,h,w,channel_n)
 
 # RMSE for channel0
 
@@ -74,21 +76,36 @@ def metrics_get(prediction, label,mask): #requires batch['prediction'],batch['la
 
     metrics={}
     metrics['rmse_nomask']=mean_squared_error(label,prediction,squared=False)
+    metrics['r2_score_nomask']=r2_score(label,prediction)
 
     # histogram
-    plt.hist(prediction,200,histtype='step',color='blue')
-    plt.hist(label,200,histtype='step',color='green')
+    plt.hist(prediction,400,histtype='step',color='blue')
+    plt.hist(label,400,histtype='step',color='green')
     plt.show()
+
+    print('unique label',np.unique(label,return_counts=True))
+    print("Average prediction={} label={}".format(np.average(prediction),np.average(label)))
+    print("Std prediction={} label={}".format(np.std(prediction),np.std(label)))
 
     prediction = prediction[mask!=0]
     label = label[mask!=0]
     print("Prediction and label shape after removal of bcknd",prediction.shape,label.shape)
 
     metrics['rmse']=mean_squared_error(label,prediction,squared=False)
-    
+
+    print('unique label',np.unique(label,return_counts=True))
+    print("Average prediction={} label={}".format(np.average(prediction),np.average(label)))
+    print("Std prediction={} label={}".format(np.std(prediction.astype(np.float32)),np.std(label.astype(np.float32))))
+
+    metrics['r2_score']=r2_score(label,prediction)
     # histogram
     plt.hist(prediction,200,histtype='step',color='blue')
     plt.hist(label,200,histtype='step',color='green')
+    plt.show()
+
+    plt.figure()
+    idxs = np.random.randint(0,prediction.shape[0],size=100000)
+    plt.plot(label[idxs],prediction[idxs],'.')
     plt.show()
 
     return metrics

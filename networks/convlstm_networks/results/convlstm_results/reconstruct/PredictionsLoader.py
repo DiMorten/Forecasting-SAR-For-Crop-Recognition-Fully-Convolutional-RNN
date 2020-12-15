@@ -82,6 +82,17 @@ class PredictionsLoaderModelForecasting(PredictionsLoaderModel):
 		model.reset_states()
 		#pdb.set_trace()
 		return np.expand_dims(prediction,axis=0),model
+	def predictOnePatchSlidingWindow(self,model,x):
+		# x: shape (1, t_len, h, w, channel_n) t_len is 12
+		batch_size = 16
+		x = np.repeat(x, batch_size, axis=0)
+		x = x[:,1:] # t_len is 11
+		prediction = model.predict(x)[0,-1] #first batch element, last t should be t=12 , producing t_y=13
+		#print("Prediction shape",prediction.shape)
+		model.reset_states()
+		#pdb.set_trace()
+		return np.expand_dims(prediction,axis=0),model
+
 	def loadPredictions(self,path_model):
 		print("============== loading model =============")
 		model=load_model(path_model, compile=False)

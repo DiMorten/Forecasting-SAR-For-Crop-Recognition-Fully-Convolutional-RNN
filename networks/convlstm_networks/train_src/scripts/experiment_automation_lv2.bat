@@ -13,7 +13,7 @@ set dataset=lm
 ::::dataSource='OpticalWithClouds'
 ::dataSource='SAR'
 set dataSource=SAR
-set model=BUnet4ConvLSTM
+set model=UUnet4ConvLSTM
 :: ==== EXTRACT PATCHES
 :: call patches_extract.bat %dataset% %dataSource%
 
@@ -32,7 +32,7 @@ set model=BUnet4ConvLSTM
 :: set id=lem_baseline_adam_focal_lessonedate5
 :: call experiment_automation.bat %id% %model% %dataset% %dataSource%
 
-set id=lem_regression3
+set id=lem_regression_maskedrmse_repeat1
 call experiment_automation.bat %id% %model% %dataset% %dataSource%
 
 :: set id=lem_baseline_adam_focal_alldates3

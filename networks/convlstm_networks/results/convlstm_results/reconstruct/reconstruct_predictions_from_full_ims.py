@@ -54,7 +54,12 @@ if dataset=='lm':
 	elif model_type=='convlstm':
 		predictions_path=path+'prediction_ConvLSTM_seq2seq_batch16_full.npy'
 	elif model_type=='unet':
-		predictions_path=path+'model_best_BUnet4ConvLSTM_lem_regression2.h5'
+		#predictions_path=path+'model_best_BUnet4ConvLSTM_lem_regression2.h5'
+		#predictions_path=path+'model_best_UUnet4ConvLSTM_lem_regression_maskedrmse.h5'
+		predictions_path=path+'model_best_UUnet4ConvLSTM_lem_regression_maskedrmse_normhwt.h5'
+		predictions_path=path+'model_best_UUnet4ConvLSTM_lem_regression_nomaskedrmse.h5'
+
+
 		#predictions_path=path+'prediction_BUnet4ConvLSTM_repeating2.npy'
 		#predictions_path=path+'prediction_BUnet4ConvLSTM_repeating4.npy'
 
@@ -223,16 +228,20 @@ for m in range(patch_size//2,row-patch_size//2,stride):
 						n-patch_size//2:n+patch_size//2 + patch_size%2]
 			patch = np.expand_dims(patch, axis = 0) # shape (1,t_len,h,w,channels)
 			#patch = patch.reshape((1,patch_size,patch_size,bands))
-			pred_cl, model = predictionsLoader.predictOnePatch(model, patch[:,:-1]) #input is length t_len-1 (1,h,w,channel_n)
+			#pred_cl, model = predictionsLoader.predictOnePatch(model, patch[:,:-1]) #input is length t_len-1 (1,h,w,channel_n)
+			pred_cl, _ = predictionsLoader.predictOnePatchSlidingWindow(model, patch[:,:-1]) #input is length t_len-1 (1,h,w,channel_n)
+
+
 #			pred_cl = model.predict(patch).argmax(axis=-1)
 	#		print(pred_cl.shape)
 
 			_, x, y, _ = pred_cl.shape
 				
 			prediction_rebuilt[:,m-stride//2:m+stride//2,n-stride//2:n+stride//2] = pred_cl[:,overlap//2:x-overlap//2,overlap//2:y-overlap//2]
-pdb.set_trace()
 
 np.save('prediction_rebuilt.npy',prediction_rebuilt)
+pdb.set_trace()
+
 # get RMSE
 
 

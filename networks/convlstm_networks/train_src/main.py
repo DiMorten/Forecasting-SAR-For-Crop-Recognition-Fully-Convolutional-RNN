@@ -28,7 +28,7 @@ from densnet_timedistributed import DenseNetFCNTimeDistributed
 
 from metrics import fmeasure,categorical_accuracy
 import deb
-from keras_weighted_categorical_crossentropy import weighted_categorical_crossentropy, sparse_accuracy_ignoring_last_label, weighted_categorical_crossentropy_ignoring_last_label, categorical_focal_ignoring_last_label, weighted_categorical_focal_ignoring_last_label, rmse
+from keras_weighted_categorical_crossentropy import weighted_categorical_crossentropy, sparse_accuracy_ignoring_last_label, weighted_categorical_crossentropy_ignoring_last_label, categorical_focal_ignoring_last_label, weighted_categorical_focal_ignoring_last_label, rmse, masked_rmse
 from keras.models import load_model
 from keras.layers import ConvLSTM2D, UpSampling2D, multiply
 from keras.utils.vis_utils import plot_model
@@ -131,6 +131,7 @@ if direct_execution==True:
 			args.t_len=13
 
 	args.model_type='BUnet4ConvLSTM'
+	args.model_type='UUnet4ConvLSTM'
 	#args.model_type='ConvLSTM_seq2seq'
 	#args.model_type='ConvLSTM_seq2seq_bi'
 	#args.model_type='DenseNetTimeDistributed_128x2'
@@ -452,10 +453,10 @@ class Dataset(NetObject):
 		mask_tmp=mask.copy()
 #		patch_n, t_len, h, w = mask.shape()
 #		mask2=np.zeros((patch_n, t_len, h, w, self.channel_n),dtype=np.uint8)
-		deb.prints(np.unique(mask_tmp,return_counts=True))
+		##deb.prints(np.unique(mask_tmp,return_counts=True))
 		mask[mask_tmp!=self.class_n-1]=1
 		mask[mask_tmp==self.class_n-1]=0
-		deb.prints(np.unique(mask,return_counts=True))
+		##deb.prints(np.unique(mask,return_counts=True))
 
 
 		mask=np.expand_dims(mask,axis=-1)
@@ -1584,6 +1585,36 @@ class NetModel(NetObject):
 
 			x = Bidirectional(ConvLSTM2D(128,3,return_sequences=True,
 					padding="same",stateful=True),merge_mode='concat')(e3)
+
+			d3 = transpose_layer(x,fs*4)
+			d3 = keras.layers.concatenate([d3, p3], axis=4)
+			d3=dilated_layer(d3,fs*4)
+			d2 = transpose_layer(d3,fs*2)
+			d2 = keras.layers.concatenate([d2, p2], axis=4)
+			d2=dilated_layer(d2,fs*2)
+			d1 = transpose_layer(d2,fs)
+			d1 = keras.layers.concatenate([d1, p1], axis=4)
+			out=dilated_layer(d1,fs)
+			out = TimeDistributed(Conv2D(self.channel_n, (1, 1), activation=None,
+										padding='same'))(out)
+			self.graph = Model(in_im, out)
+			print(self.graph.summary())
+		if self.model_type=='UUnet4ConvLSTM':
+
+
+			#fs=32
+			fs=16
+
+			p1=dilated_layer(in_im,fs)			
+			p1=dilated_layer(p1,fs)
+			e1 = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(p1)
+			p2=dilated_layer(e1,fs*2)
+			e2 = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(p2)
+			p3=dilated_layer(e2,fs*4)
+			e3 = TimeDistributed(AveragePooling2D((2, 2), strides=(2, 2)))(p3)
+
+			x = ConvLSTM2D(256,3,return_sequences=True,
+					padding="same",stateful=True)(e3)
 
 			d3 = transpose_layer(x,fs*4)
 			d3 = keras.layers.concatenate([d3, p3], axis=4)
@@ -2833,8 +2864,9 @@ if __name__ == '__main__':
 	#loss=weighted_categorical_crossentropy_ignoring_last_label(model.loss_weights_ones)
 	#loss=categorical_focal_ignoring_last_label(alpha=0.25,gamma=2)
 	#loss=weighted_categorical_focal_ignoring_last_label(model.loss_weights,alpha=0.25,gamma=2)
-	#loss = rmse()
-	model.graph.compile(loss='mean_squared_error',
+	loss = masked_rmse()
+	#loss='mean_squared_error'
+	model.graph.compile(loss=loss,
 				  optimizer=adam, metrics=metrics)
 
 	model_load=False
