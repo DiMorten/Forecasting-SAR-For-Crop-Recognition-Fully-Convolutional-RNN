@@ -33,6 +33,7 @@ import shutil
 import deb
 from dataSource import DataSource, SARSource, OpticalSource, Dataset, LEM, CampoVerde, OpticalSourceWithClouds, Humidity
 from dataset_stats import DatasetStats
+import matplotlib.pyplot as plt
 
 def mask_train_test_switch_from_path(path):
 	mask=cv2.imread(path)
@@ -278,7 +279,32 @@ class DataForNet(object):
 		print("============= Normalizing...")		
 		#pdb.set_trace()
 
+
+		# ==================== histogram before normalization
+
+		def histogram_get(im,mask):
+			mask=mask.flatten()
+			plt.figure()
+			colors = ['blue','green']
+			for channel in range(im.shape[-1]):
+				im_channel_flat=im[:,:,channel].flatten()
+				im_channel_flat=im_channel_flat[mask==1]
+				plt.hist(im_channel_flat,150,histtype='step',color=colors[channel])
+
+				
+
+
+		histogram_plot=False
+		if histogram_plot==True:
+			plt.figure()
+			for t_step in range(patch["full_ims"].shape[0]):
+				histogram_get(patch["full_ims"][t_step],patch["train_mask"])
+			plt.show()
+
+		# ==================== histogram before normalization
+
 		patch["full_ims"]=self.dataSource.im_seq_normalize3(patch["full_ims"],patch["train_mask"])
+		#patch["full_ims"]=self.dataSource.im_seq_normalize_hwt(patch["full_ims"],patch["train_mask"])
 
 		deb.prints(np.min(patch["full_ims"]))
 		deb.prints(np.max(patch["full_ims"]))
@@ -318,6 +344,21 @@ class DataForNet(object):
 
 		self.full_label_train,self.full_label_test=self.label_seq_mask(patch["full_label_ims"],patch["train_mask"]) 
 
+		histogram_plot_after_norm=False
+		if histogram_plot_after_norm==True:
+			plt.figure()
+			for t_step in range(self.full_ims_train.shape[0]):
+				histogram_get(self.full_ims_train[t_step],patch["train_mask"])
+			plt.show()
+
+		# Optionally get im stats
+		calcAverageTimeSeriesFlag=True
+		if calcAverageTimeSeriesFlag==True:
+			print("============ Beginning calc average timeseries ============")
+			#self.datasetStats.calcAverageTimeseries(patch["full_ims"],patch["train_mask"])
+			self.datasetStats.calcAverageTimeseriesPerClass(self.full_ims_train,patch["train_mask"],self.full_label_train)
+			pdb.set_trace()
+
 
 
 		#self.label_id=self.conf["seq"]["id_first"]+self.conf['t_len']-2 # Less 1 for python idx, less 1 for id_first starts at 1 
@@ -326,16 +367,6 @@ class DataForNet(object):
 		print("Train masked unique/count",unique,count) 
 		unique,count=np.unique(self.full_label_test,return_counts=True) 
 		print("Test masked unique/count",unique,count) 
-
-		# regression
-		# self.full_label_train shape is (t,h,w,classes)
-#		self.full_ims_train[:,patch["train_mask"]==1]=0 # set last tstep as bcknd for trainig
-#		for t_step in range(self.full_ims_train.shape[0]):		
-#			self.full_ims_train[t_step,patch["train_mask"]==1]=0 # set last tstep as bcknd for trainig
-#			self.full_ims_test[t_step,patch["train_mask"]==1]=0 # we dont need this. only train ims
-		
-
-
 		# Load train mask
 		#self.conf["patch"]["overlap"]=26
 
@@ -356,7 +387,6 @@ class DataForNet(object):
 			np.save('full_label_test.npy',self.full_label_test)
 			np.save('full_label_train.npy',self.full_label_train)
 			
-		#pdb.set_trace()
 		#========================== BEGIN PATCH EXTRACTION ============================#
 		view_as_windows_flag=False
 		if view_as_windows_flag==True:

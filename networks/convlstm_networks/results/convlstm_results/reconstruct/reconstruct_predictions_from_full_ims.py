@@ -59,6 +59,8 @@ if dataset=='lm':
 		predictions_path=path+'model_best_UUnet4ConvLSTM_lem_regression_maskedrmse_normhwt.h5'
 		predictions_path=path+'model_best_UUnet4ConvLSTM_lem_regression_nomaskedrmse.h5'
 		predictions_path=path+'model_best_UUnet4ConvLSTM_lem_regression_maskedrmse_nobalance.h5'
+		predictions_path=path+'model_best_UUnet4ConvLSTM_lem_regression_maskedrmse_balanced_rep1.h5'
+
 
 		
 
@@ -241,8 +243,8 @@ for m in range(patch_size//2,row-patch_size//2,stride):
 			_, x, y, _ = pred_cl.shape
 				
 			prediction_rebuilt[:,m-stride//2:m+stride//2,n-stride//2:n+stride//2] = pred_cl[:,overlap//2:x-overlap//2,overlap//2:y-overlap//2]
-
-np.save('prediction_rebuilt'+predictions_path[20:-3]+'.npy',prediction_rebuilt)
+print("saving in...",'prediction_rebuilt'+predictions_path[22:-3]+'.npy')
+np.save('prediction_rebuilt'+predictions_path[22:-3]+'.npy',prediction_rebuilt)
 pdb.set_trace()
 
 # get RMSE

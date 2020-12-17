@@ -50,6 +50,7 @@ test_y = full_ims_test[-1] # t len 1. shape (h, w, channel_n)
 #pred = np.load('prediction_rebuilt.npy') # shape (1,h,w,channel_n)
 #pred = np.load('prediction_rebuilt_slidingwindow_bunet4convlstm.npy')
 pred = np.load('prediction_rebuilt_stateful_bunet4convlstm.npy')
+pred = np.load('prediction_rebuilt_UUnet4ConvLSTM_lem_regression_maskedrmse_balanced_rep1.npy')
 
 
 #pred = np.load('prediction_rebuilt_stateful_uunet4convlstm.npy') # shape (1,h,w,channel_n)
@@ -83,9 +84,9 @@ def metrics_get(prediction, label,mask): #requires batch['prediction'],batch['la
     metrics['r2_score_nomask']=r2_score(label,prediction)
 
     # histogram
-    plt.hist(prediction,400,histtype='step',color='blue')
-    plt.hist(label,400,histtype='step',color='green')
-    plt.show()
+    #plt.hist(prediction,400,histtype='step',color='blue')
+    #plt.hist(label,400,histtype='step',color='green')
+    #plt.show()
 
     print('unique label',np.unique(label,return_counts=True))
     print("Average prediction={} label={}".format(np.average(prediction),np.average(label)))
@@ -103,8 +104,9 @@ def metrics_get(prediction, label,mask): #requires batch['prediction'],batch['la
 
     metrics['r2_score']=r2_score(label,prediction)
     # histogram
-    plt.hist(prediction,200,histtype='step',color='blue')
-    plt.hist(label,200,histtype='step',color='green')
+    plt.figure()
+    plt.hist(prediction,np.linspace(-2,8,400),histtype='step',color='blue')
+    plt.hist(label,np.linspace(-2,8,400),histtype='step',color='green')
     plt.show()
 
     plt.figure()
