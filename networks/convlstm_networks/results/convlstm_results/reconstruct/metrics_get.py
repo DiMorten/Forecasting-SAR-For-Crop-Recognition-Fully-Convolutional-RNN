@@ -47,13 +47,17 @@ full_ims_test = np.load(full_path+'full_ims_train.npy') # shape (t_len, h, w, ch
 #test_x = full_ims_test[:-1] # t len 12. shape (12, h, w, channel_n)
 test_y = full_ims_test[-1] # t len 1. shape (h, w, channel_n)
 
-pred = np.load('prediction_rebuilt.npy') # shape (1,h,w,channel_n)
+#pred = np.load('prediction_rebuilt.npy') # shape (1,h,w,channel_n)
+#pred = np.load('prediction_rebuilt_slidingwindow_bunet4convlstm.npy')
+pred = np.load('prediction_rebuilt_stateful_bunet4convlstm.npy')
+
+
 #pred = np.load('prediction_rebuilt_stateful_uunet4convlstm.npy') # shape (1,h,w,channel_n)
 #pred = np.load('prediction_rebuilt_stateful_bunet4convlstm.npy') # shape (1,h,w,channel_n)
 
 # RMSE for channel0
 
-pred=pred[:,:,:]
+#pred=pred[:,:,:]
 
 
 def metrics_get(prediction, label,mask): #requires batch['prediction'],batch['label']

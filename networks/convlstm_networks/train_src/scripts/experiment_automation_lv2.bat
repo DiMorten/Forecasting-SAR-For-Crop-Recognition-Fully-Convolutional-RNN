@@ -32,7 +32,7 @@ set model=UUnet4ConvLSTM
 :: set id=lem_baseline_adam_focal_lessonedate5
 :: call experiment_automation.bat %id% %model% %dataset% %dataSource%
 
-set id=lem_regression_maskedrmse_repeat1
+set id=lem_regression_maskedrmse_nobalance
 call experiment_automation.bat %id% %model% %dataset% %dataSource%
 
 :: set id=lem_baseline_adam_focal_alldates3
