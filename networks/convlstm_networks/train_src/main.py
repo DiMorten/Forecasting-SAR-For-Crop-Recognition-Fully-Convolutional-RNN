@@ -447,7 +447,29 @@ class Dataset(NetObject):
 		out=np.reshape(out,((out.shape[0],)+label_shape[1:]))
 		return out
 
-	def metrics_get(self,prediction, label,mask,ignore_bcknd=True,debug=2): #requires batch['prediction'],batch['label']
+	def metrics_get(self,prediction, label,mask,ignore_bcknd=True,debug=2,
+		valid_dates_mask=None): #requires batch['prediction'],batch['label']
+		"""
+        Parameters
+        ----------
+        prediction : (batch_size, t_len, h, w, channel_n)
+            Prediction
+        label : (batch_size, t_len, h, w, channel_n)
+            In forecasting its the input image with a time delay of 1 timestep
+        mask : (batch_size, t_len, h, w, channel_n)
+            The classification labels are used as mask patch
+
+        valid_dates_mask : list int
+            If metrics are to be applied to specific dates
+        """
+
+		if valid_dates_mask!=None:
+			prediction = prediction[:,valid_dates_mask]
+			label = label[:,valid_dates_mask]
+			mask = mask[:,valid_dates_mask]
+			
+
+
 		#mask[mask>0]=1
 		mask=mask.argmax(axis=-1)
 		mask_tmp=mask.copy()
@@ -460,7 +482,7 @@ class Dataset(NetObject):
 
 
 		mask=np.expand_dims(mask,axis=-1)
-		mask = np.repeat(mask,2,axis=-1)
+		mask = np.repeat(mask,2,axis=-1) # shape is (batch_size,t_len,h,w,channel_n)
 #		mask2[:,:,:,:,0]=mask.copy()
 #		mask2[:,:,:,:,1]=mask.copy()
 
@@ -2472,9 +2494,13 @@ class NetModel(NetObject):
 				batch['train']['label'] = data.patches['train']['label'][idx0:idx1]
 				if self.time_measure==True:
 					start_time=time.time()
+				batch_x = batch['train']['in'][:,:-1].astype(np.float16)
+				batch_y = batch['train']['in'][:,1:].astype(np.float16)
+				batch_y[:,-2:] = -2 # mask the last 2 outputs for val and test
+
 				self.metrics['train']['loss'] += self.graph.train_on_batch(
-					batch['train']['in'][:,0:-2].astype(np.float16), 
-					batch['train']['in'][:,1:-1].astype(np.float16))		# Accumulated epoch
+					batch_x, 
+					batch_y)		# Accumulated epoch
 				self.graph.reset_states()
 				if self.time_measure==True:
 					batch_time=time.time()-start_time
@@ -2491,7 +2517,7 @@ class NetModel(NetObject):
 			#================== VAL LOOP=====================#
 			if self.val_set:
 				deb.prints(data.patches['val']['label'].shape)
-				data.patches['val']['prediction']=np.zeros_like(data.patches['val']['in'][:,:-2],dtype=prediction_dtype)
+				data.patches['val']['prediction']=np.zeros_like(data.patches['val']['in'][:,:-1],dtype=prediction_dtype)
 				self.batch_test_stats=False
 
 				for batch_id in range(0, self.batch['val']['n']):
@@ -2501,20 +2527,24 @@ class NetModel(NetObject):
 					batch['val']['in'] = data.patches['val']['in'][idx0:idx1]
 					batch['val']['label'] = data.patches['val']['label'][idx0:idx1]
 
+					batch_x = batch['val']['in'][:,:-1].astype(np.float16)
+					batch_y = batch['val']['in'][:,1:].astype(np.float16)
+					batch_y[:,:-2] = -2 # mask train
+					batch_y[:,-1] = -2 # mask test
+
 					if self.batch_test_stats:
 						self.metrics['val']['loss'] += self.graph.test_on_batch(							
-							batch['val']['in'][:,0:-2].astype(np.float16), 
-							batch['val']['in'][:,1:-1].astype(np.float16))	
+							batch_x, 
+							batch_y)	
 						self.graph.reset_states()
-					data.patches['val']['prediction'][idx0:idx1]=(self.graph.predict(
-						batch['val']['in'][:,0:-2].astype(np.float16),batch_size=self.batch['val']['size'])).astype(prediction_dtype)
+					data.patches['val']['prediction'][idx0:idx1]=(self.graph.predict(batch_x,batch_size=self.batch['val']['size'])).astype(prediction_dtype)
 					self.graph.reset_states()
 				self.metrics['val']['loss'] /= self.batch['val']['n']
 
 				metrics_val=data.metrics_get(data.patches['val']['prediction'],
-				data.patches['val']['in'][:,1:-1],
-				data.patches['val']['label'][:,1:-1],
-				debug=2)
+				data.patches['val']['in'][:,1:],
+				data.patches['val']['label'][:,1:],
+				debug=2, valid_dates_mask = [-2])
 
 				self.early_stop_check(metrics_val,epoch)
 				#if epoch==1000 or epoch==700 or epoch==500 or epoch==1200:
@@ -2554,33 +2584,36 @@ class NetModel(NetObject):
 			if test_loop_each_epoch==True or self.early_stop['signal']==True or (self.stop_epoch>=0 and self.stop_epoch==epoch):
 				
 				print("======== BEGINNING TEST PREDICT... ============")
-				data.patches['test']['prediction']=np.zeros_like(data.patches['test']['in'][:,:-2],dtype=prediction_dtype)#.astype(prediction_dtype)
+				data.patches['test']['prediction']=np.zeros_like(data.patches['test']['in'][:,:-1],dtype=prediction_dtype)#.astype(prediction_dtype)
 				self.batch_test_stats=False
 
 				for batch_id in range(0, self.batch['test']['n']):
 					idx0 = batch_id*self.batch['test']['size']
 					idx1 = (batch_id+1)*self.batch['test']['size']
 
-					batch['test']['in'] = data.patches['test']['in'][idx0:idx1]
-					batch['test']['label'] = data.patches['test']['label'][idx0:idx1]
+					batch['test']['in'] = data.patches['train']['in'][idx0:idx1] # test is same as train set spatially. 
+					batch['test']['label'] = data.patches['train']['label'][idx0:idx1]
 
+					batch_x = batch['test']['in'][:,:-1].astype(np.float16)
+					batch_y = batch['test']['in'][:,1:].astype(np.float16)
+					batch_y[:,:-1] = -2 # mask test
 					if self.batch_test_stats:
 						self.metrics['test']['loss'] += self.graph.test_on_batch(					
-							batch['test']['in'][:,0:-2].astype(np.float16), 
-							batch['test']['in'][:,1:-1].astype(np.float16))	
+							batch_x, 
+							batch_y)	
 						self.graph.reset_states()
 
 					data.patches['test']['prediction'][idx0:idx1]=(self.graph.predict(
-						batch['test']['in'][:,0:-2].astype(np.float16),batch_size=self.batch['test']['size'])).astype(prediction_dtype)
+						batch_x,batch_size=self.batch['test']['size'])).astype(prediction_dtype)
 					self.graph.reset_states()
 				if self.batch_test_stats==True:
 					# Average epoch loss
 					self.metrics['test']['loss'] /= self.batch['test']['n']
 				# Get test metrics
 				metrics=data.metrics_get(data.patches['test']['prediction'],
-					data.patches['test']['in'][:,1:-1],
-					data.patches['test']['label'][:,1:-1],
-					debug=1)
+					data.patches['test']['in'][:,1:],
+					data.patches['test']['label'][:,1:],
+					debug=1, valid_dates_mask = [-1])
 			else:
 				metrics=metrics_val.copy()
 			#====================METRICS GET================================================#
