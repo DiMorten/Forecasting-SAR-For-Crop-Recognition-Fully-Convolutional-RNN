@@ -51,6 +51,7 @@ test_y = full_ims_test[-1] # t len 1. shape (h, w, channel_n)
 #pred = np.load('prediction_rebuilt_slidingwindow_bunet4convlstm.npy')
 pred = np.load('prediction_rebuilt_stateful_bunet4convlstm.npy')
 pred = np.load('prediction_rebuilt_UUnet4ConvLSTM_lem_regression_maskedrmse_balanced_rep1.npy')
+pred = np.load('prediction_rebuilt_UUnet4ConvLSTM_lem_regression_maskedrmse_normhwt.npy')
 
 
 #pred = np.load('prediction_rebuilt_stateful_uunet4convlstm.npy') # shape (1,h,w,channel_n)

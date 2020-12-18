@@ -56,10 +56,10 @@ if dataset=='lm':
 	elif model_type=='unet':
 		#predictions_path=path+'model_best_BUnet4ConvLSTM_lem_regression2.h5'
 		#predictions_path=path+'model_best_UUnet4ConvLSTM_lem_regression_maskedrmse.h5'
-		predictions_path=path+'model_best_UUnet4ConvLSTM_lem_regression_maskedrmse_normhwt.h5'
 		predictions_path=path+'model_best_UUnet4ConvLSTM_lem_regression_nomaskedrmse.h5'
 		predictions_path=path+'model_best_UUnet4ConvLSTM_lem_regression_maskedrmse_nobalance.h5'
 		predictions_path=path+'model_best_UUnet4ConvLSTM_lem_regression_maskedrmse_balanced_rep1.h5'
+		predictions_path=path+'model_best_UUnet4ConvLSTM_lem_regression_maskedrmse_normhwt.h5'
 
 
 		
