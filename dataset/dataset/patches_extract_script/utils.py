@@ -263,7 +263,7 @@ class DataForNet(object):
 		deb.prints((self.conf["t_len"],)+self.patch_shape)
 
 		#patch["values"]=np.zeros((self.conf["t_len"],)+patch_shape)
-		patch["full_ims"]=np.zeros((self.conf["t_len"],)+self.conf["im_3d_size"]).astype(np.float32)
+		patch["full_ims"]=np.zeros((self.conf["t_len"],)+self.conf["im_3d_size"]).astype(np.float16)
 		patch["full_label_ims"]=np.zeros((self.conf["t_len"],)+self.conf["im_3d_size"][0:2]).astype(np.int8)
 
 		#for t_step in range(0,self.conf["t_len"]):
@@ -303,6 +303,14 @@ class DataForNet(object):
 
 		# ==================== histogram before normalization
 
+		# Optionally get im stats
+		calcAverageTimeSeriesFlag=True
+		if calcAverageTimeSeriesFlag==True:
+			print("============ Beginning calc average timeseries ============")
+			self.datasetStats.calcAverageTimeseries(patch["full_ims"],patch["train_mask"])
+			#self.datasetStats.calcAverageTimeseriesPerClass(patch["full_ims"],patch["train_mask"],patch["full_label_ims"])
+			pdb.set_trace()
+
 		patch["full_ims"]=self.dataSource.im_seq_normalize3(patch["full_ims"],patch["train_mask"])
 		#patch["full_ims"]=self.dataSource.im_seq_normalize_hwt(patch["full_ims"],patch["train_mask"])
 
@@ -310,13 +318,6 @@ class DataForNet(object):
 		deb.prints(np.max(patch["full_ims"]))
 		
 
-		# Optionally get im stats
-		calcAverageTimeSeriesFlag=False
-		if calcAverageTimeSeriesFlag==True:
-			print("============ Beginning calc average timeseries ============")
-			#self.datasetStats.calcAverageTimeseries(patch["full_ims"],patch["train_mask"])
-			self.datasetStats.calcAverageTimeseriesPerClass(patch["full_ims"],patch["train_mask"],patch["full_label_ims"])
-			pdb.set_trace()
 
 
 		print("============ Beginning masking ============")
@@ -352,11 +353,11 @@ class DataForNet(object):
 			plt.show()
 
 		# Optionally get im stats
-		calcAverageTimeSeriesFlag=True
+		calcAverageTimeSeriesFlag=False
 		if calcAverageTimeSeriesFlag==True:
 			print("============ Beginning calc average timeseries ============")
-			#self.datasetStats.calcAverageTimeseries(patch["full_ims"],patch["train_mask"])
-			self.datasetStats.calcAverageTimeseriesPerClass(self.full_ims_train,patch["train_mask"],self.full_label_train)
+			self.datasetStats.calcAverageTimeseries(patch["full_ims"],patch["train_mask"])
+			#self.datasetStats.calcAverageTimeseriesPerClass(self.full_ims_train,patch["train_mask"],self.full_label_train)
 			pdb.set_trace()
 
 
@@ -870,7 +871,7 @@ class DataForNet(object):
 				im_train[t_step,:,:,band][mask!=1]=-2
 				im_test[t_step,:,:,band][mask!=2]=-2
 		deb.prints(im_train.shape)
-		return im_train,im_test
+		return im_train.astype(np.float16),im_test.astype(np.float16)
 
 
 	def label_seq_mask(self,im,mask): 

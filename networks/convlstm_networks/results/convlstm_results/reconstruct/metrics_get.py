@@ -54,7 +54,7 @@ pred = np.load('prediction_rebuilt_UUnet4ConvLSTM_lem_regression_maskedrmse_bala
 pred = np.load('prediction_rebuilt_UUnet4ConvLSTM_lem_regression_maskedrmse_normhwt.npy')
 pred = np.load('prediction_rebuilt_UUnet4ConvLSTM_regression_maskedrmse_mar18.npy')
 
-
+pred = np.load('prediction_rebuilt_UUnet4ConvLSTM_regression_jun18_ext.npy')
 
 #pred = np.load('prediction_rebuilt_stateful_uunet4convlstm.npy') # shape (1,h,w,channel_n)
 #pred = np.load('prediction_rebuilt_stateful_bunet4convlstm.npy') # shape (1,h,w,channel_n)

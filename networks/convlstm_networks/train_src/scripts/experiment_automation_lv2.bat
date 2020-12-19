@@ -15,7 +15,7 @@ set dataset=lm
 set dataSource=SAR
 set model=UUnet4ConvLSTM
 :: ==== EXTRACT PATCHES
-:: call patches_extract.bat %dataset% %dataSource%
+call patches_extract.bat %dataset% %dataSource%
 
 :: set id=lem_baseline_adam_focal_lessonedate1
 :: call experiment_automation.bat %id% %model% %dataset% %dataSource%
@@ -32,8 +32,8 @@ set model=UUnet4ConvLSTM
 :: set id=lem_baseline_adam_focal_lessonedate5
 :: call experiment_automation.bat %id% %model% %dataset% %dataSource%
 
-set id=regression_maskedrmse_mar18
-call experiment_automation.bat %id% %model% %dataset% %dataSource%
+set id=dummy
+:: call experiment_automation.bat %id% %model% %dataset% %dataSource%
 
 :: set id=lem_baseline_adam_focal_alldates3
 :: call experiment_automation.bat %id% %model% %dataset% %dataSource%

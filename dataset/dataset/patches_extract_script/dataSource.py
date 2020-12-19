@@ -226,7 +226,7 @@ class Dataset(object):
 			print(t_step,add_id)
 			deb.prints(conf["in_npy_path"]/(im_names[t_step]+".npy"))
 			#patch["full_ims"][t_step] = np.load(conf["in_npy_path"]+names[t_step]+".npy")[:,:,:2]
-			patch["full_ims"][t_step] = self.dataSource.im_load(conf["in_npy_path"]/(im_names[t_step]+".npy"),conf)
+			patch["full_ims"][t_step] = self.dataSource.im_load(conf["in_npy_path"]/(im_names[t_step]+".npy"),conf).astype(np.float16)
 			#patch["full_ims"][t_step] = np.load(conf["in_npy_path"]+names[t_step]+".npy")
 			deb.prints(patch["full_ims"].dtype)
 			deb.prints(np.average(patch["full_ims"][t_step]))
@@ -290,6 +290,12 @@ class LEM(Dataset):
 			# less last date
 			#self.im_list=['20170612_S1', '20170706_S1', '20170811_S1', '20170916_S1', '20171010_S1', '20171115_S1', '20171209_S1', '20180114_S1', '20180219_S1', '20180315_S1', '20180420_S1', '20180514_S1']
 
+			# extended forecasting jun 18
+			self.im_list=['20161214_S1','20170119_S1','20170212_S1','20170308_S1','20170413_S1','20170519_S1',
+				'20170612_S1', '20170706_S1', '20170811_S1', '20170916_S1', '20171010_S1', '20171115_S1', 
+				'20171209_S1', '20180114_S1', '20180219_S1', '20180315_S1', '20180420_S1', '20180514_S1', 
+				'20180619_S1']
+			
 			self.label_list=self.im_list.copy()
 		elif self.dataSource.name == 'OpticalSource':
 			#self.im_list=['20170729_S2_10m','20170803_S2_10m','20170907_S2_10m','20171017_S2_10m','20171022_S2_10m','20180420_S2_10m','20180430_S2_10m','20180510_S2_10m','20180614_S2_10m','20180619_S2_10m','20180624_S2_10m']

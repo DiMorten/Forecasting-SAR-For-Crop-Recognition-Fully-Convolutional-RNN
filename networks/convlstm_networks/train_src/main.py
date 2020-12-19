@@ -256,8 +256,9 @@ class Dataset(NetObject):
 		self.patches['train']['in']=self.patches['train']['in'].astype(np.float32)
 		self.patches['test']['in']=self.patches['test']['in'].astype(np.float32)
 
-		self.patches['train']['label']=self.patches['train']['label'].astype(np.int8)
-		self.patches['test']['label']=self.patches['test']['label'].astype(np.int8)
+		LABEL_IM_N = 13
+		self.patches['train']['label']=self.patches['train']['label'][:,-LABEL_IM_N:].astype(np.int8)
+		self.patches['test']['label']=self.patches['test']['label'][:,-LABEL_IM_N:].astype(np.int8)
 		
 		deb.prints(len(self.patches_list['test']['label']))
 		deb.prints(len(self.patches_list['test']['ims']))
@@ -280,7 +281,7 @@ class Dataset(NetObject):
 			
 		self.patches['train']['n']=self.patches['train']['in'].shape[0]
 		self.patches['train']['idx']=range(self.patches['train']['n'])
-		np.save('labels_beginning.npy',self.patches['test']['label'])
+		#np.save('labels_beginning.npy',self.patches['test']['label'])
 
 	def batch_label_to_one_hot(self,im):
 		im_one_hot=np.zeros((im.shape[0],im.shape[1],im.shape[2],im.shape[3],self.class_n))
@@ -458,9 +459,13 @@ class Dataset(NetObject):
 		mask[mask_tmp==self.class_n-1]=0
 		##deb.prints(np.unique(mask,return_counts=True))
 
+		mask = mask[:,0]
+		mask=np.expand_dims(mask,axis=1)
+		mask = np.repeat(mask,prediction.shape[1],axis=1)
 
 		mask=np.expand_dims(mask,axis=-1)
 		mask = np.repeat(mask,2,axis=-1)
+
 #		mask2[:,:,:,:,0]=mask.copy()
 #		mask2[:,:,:,:,1]=mask.copy()
 
@@ -472,7 +477,7 @@ class Dataset(NetObject):
 		prediction = prediction.flatten()
 		label = label.flatten()
 		mask=mask.flatten()
-		print("Prediction and label shape after flatten",prediction.shape,label.shape)
+		print("Prediction, label and mask shape after flatten",prediction.shape,label.shape,mask.shape)
 
 		metrics={}
 		metrics['rmse_nomask']=mean_squared_error(label,prediction,squared=False)
@@ -2675,7 +2680,7 @@ class ModelLoadEachBatch(NetModel):
 flag = {"data_create": 2, "label_one_hot": True}
 if __name__ == '__main__':
 
-	premade_split_patches_load=True
+	premade_split_patches_load=False
 	
 
 	deb.prints(premade_split_patches_load)

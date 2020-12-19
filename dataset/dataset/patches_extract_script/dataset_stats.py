@@ -29,6 +29,7 @@ class DatasetStats():
             ax.set(xlabel='time ID', ylabel='band',title='Image average over time')
             plt.grid()
             print('averageTimeseries',averageTimeseries)
+        plt.show()
     def calcAverageTimeseriesPerClass(self,ims,mask,label):
         print("Label shape",label.shape)
         time_delta=self.dataset.getTimeDelta()
