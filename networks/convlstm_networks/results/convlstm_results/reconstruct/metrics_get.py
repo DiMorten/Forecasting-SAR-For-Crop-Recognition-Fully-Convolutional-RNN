@@ -16,6 +16,7 @@ from PredictionsLoader import PredictionsLoaderNPY, PredictionsLoaderModel,Predi
 from utils import seq_add_padding, add_padding
 from sklearn.metrics import mean_squared_error, r2_score
 import matplotlib.pyplot as plt
+import matplotlib
 parser = argparse.ArgumentParser(description='')
 parser.add_argument('-ds', '--dataset', dest='dataset',
 					default='cv', help='t len')
@@ -55,6 +56,8 @@ pred = np.load('prediction_rebuilt_UUnet4ConvLSTM_lem_regression_maskedrmse_norm
 pred = np.load('prediction_rebuilt_UUnet4ConvLSTM_regression_maskedrmse_mar18.npy')
 
 pred = np.load('prediction_rebuilt_UUnet4ConvLSTM_regression_jun18_ext.npy')
+pred = np.load('prediction_rebuilt_UUnet4ConvLSTM_lem_jun18_nonorm.npy')
+
 
 #pred = np.load('prediction_rebuilt_stateful_uunet4convlstm.npy') # shape (1,h,w,channel_n)
 #pred = np.load('prediction_rebuilt_stateful_bunet4convlstm.npy') # shape (1,h,w,channel_n)
@@ -86,6 +89,7 @@ def metrics_get(prediction, label,mask): #requires batch['prediction'],batch['la
     metrics['rmse_nomask']=mean_squared_error(label,prediction,squared=False)
     metrics['r2_score_nomask']=r2_score(label,prediction)
 
+
     # histogram
     #plt.hist(prediction,400,histtype='step',color='blue')
     #plt.hist(label,400,histtype='step',color='green')
@@ -105,16 +109,29 @@ def metrics_get(prediction, label,mask): #requires batch['prediction'],batch['la
     print("Average prediction={} label={}".format(np.average(prediction),np.average(label)))
     print("Std prediction={} label={}".format(np.std(prediction.astype(np.float32)),np.std(label.astype(np.float32))))
 
+
+
     metrics['r2_score']=r2_score(label,prediction)
     # histogram
+    hist_min, hist_max = -2, 8
+    hist_min, hist_max = -0.1, 0.5
     plt.figure()
-    plt.hist(prediction,np.linspace(-2,8,400),histtype='step',color='blue')
-    plt.hist(label,np.linspace(-2,8,400),histtype='step',color='green')
+    matplotlib.rcParams.update({'font.size': 10})
+
+    
+    plt.hist(prediction,np.linspace(hist_min, hist_max,400),histtype='step',color='blue',label='prediction')
+    plt.hist(label,np.linspace(hist_min, hist_max,400),histtype='step',color='green',label='GT')
+    plt.xlabel('SAR intensity bins')
+    plt.ylabel('Pixel count')
+    plt.legend()
+
     plt.show()
 
     plt.figure()
     idxs = np.random.randint(0,prediction.shape[0],size=100000)
     plt.plot(label[idxs],prediction[idxs],'.')
+    plt.xlabel('SAR intensity')
+    plt.ylabel('SAR intensity')
     plt.show()
 
     return metrics
