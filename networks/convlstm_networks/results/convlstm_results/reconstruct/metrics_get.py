@@ -58,7 +58,7 @@ pred = np.load('prediction_rebuilt_UUnet4ConvLSTM_regression_maskedrmse_mar18.np
 pred = np.load('prediction_rebuilt_UUnet4ConvLSTM_regression_jun18_ext.npy')
 pred = np.load('prediction_rebuilt_UUnet4ConvLSTM_lem_jun18_nonorm.npy')
 
-
+pred = np.load('prediction_rebuilt_UUnet4ConvLSTM_lem_jun18_extendfromoct_nonorm.npy')
 #pred = np.load('prediction_rebuilt_stateful_uunet4convlstm.npy') # shape (1,h,w,channel_n)
 #pred = np.load('prediction_rebuilt_stateful_bunet4convlstm.npy') # shape (1,h,w,channel_n)
 
@@ -124,6 +124,8 @@ def metrics_get(prediction, label,mask): #requires batch['prediction'],batch['la
     plt.xlabel('SAR intensity bins')
     plt.ylabel('Pixel count')
     plt.legend()
+    plt.xlim((-0.005,0.21))
+    plt.ylim((0,600000))
 
     plt.show()
 
@@ -132,6 +134,9 @@ def metrics_get(prediction, label,mask): #requires batch['prediction'],batch['la
     plt.plot(label[idxs],prediction[idxs],'.')
     plt.xlabel('SAR intensity')
     plt.ylabel('SAR intensity')
+    plt.plot([0,0.25],[0,0.25],'k--')
+    plt.xlim((-0.01,0.25))
+    plt.ylim((-0.01,0.25))
     plt.show()
 
     return metrics

@@ -65,7 +65,7 @@ if dataset=='lm':
 		predictions_path=path+'model_best_UUnet4ConvLSTM_regression_jun18_ext.h5'
 		predictions_path=path+'model_best_UUnet4ConvLSTM_lem_jun18_nonorm.h5'
 
-
+		predictions_path=path+'model_best_UUnet4ConvLSTM_lem_jun18_extendfromoct_nonorm.h5'
 		
 
 

@@ -304,7 +304,7 @@ class DataForNet(object):
 		# ==================== histogram before normalization
 
 		# Optionally get im stats
-		calcAverageTimeSeriesFlag=True
+		calcAverageTimeSeriesFlag=False
 		if calcAverageTimeSeriesFlag==True:
 			print("============ Beginning calc average timeseries ============")
 			self.datasetStats.calcAverageTimeseries(patch["full_ims"],patch["train_mask"])

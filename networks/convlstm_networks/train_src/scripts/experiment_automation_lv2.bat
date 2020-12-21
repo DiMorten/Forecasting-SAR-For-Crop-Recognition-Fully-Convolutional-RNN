@@ -32,7 +32,7 @@ call patches_extract.bat %dataset% %dataSource%
 :: set id=lem_baseline_adam_focal_lessonedate5
 :: call experiment_automation.bat %id% %model% %dataset% %dataSource%
 
-set id=lem_jun18
+set id=lem_jun18_l1loss_nonorm
 call experiment_automation.bat %id% %model% %dataset% %dataSource%
 
 :: set id=lem_baseline_adam_focal_alldates3

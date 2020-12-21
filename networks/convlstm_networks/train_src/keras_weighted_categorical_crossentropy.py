@@ -24,6 +24,14 @@ def masked_rmse():
         return K.sqrt(K.mean(K.square(error)))
     return f_reg
 
+def masked_L1():
+    def f_reg(y_true, y_pred):
+        y_true = K.flatten(y_true)
+        y_pred =  K.flatten(y_pred)
+        error = y_pred - y_true
+        error = tf.gather(error, tf.where(tf.not_equal(y_true, -2.0)))
+        return K.mean(K.abs(error))
+    return f_reg
 
 
 def weighted_categorical_crossentropy(weights):

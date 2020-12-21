@@ -256,7 +256,7 @@ class Dataset(NetObject):
 		self.patches['train']['in']=self.patches['train']['in'].astype(np.float32)
 		self.patches['test']['in']=self.patches['test']['in'].astype(np.float32)
 
-		#LABEL_IM_N = 13
+		LABEL_IM_N = 13
 		self.patches['train']['label']=self.patches['train']['label'][:,-LABEL_IM_N:].astype(np.int8)
 		self.patches['test']['label']=self.patches['test']['label'][:,-LABEL_IM_N:].astype(np.int8)
 		
