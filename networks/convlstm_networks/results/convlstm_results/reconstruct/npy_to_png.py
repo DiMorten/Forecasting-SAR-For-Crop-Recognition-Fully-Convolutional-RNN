@@ -10,7 +10,8 @@ def im_to_png(im_name):
     im=np.squeeze(np.load(im_name))
     print(im.min(),np.average(im),im.max())
 #    im = ((im+2)*200/5).astype(np.uint8)#(im.max()-im.min())
-    im = ((im+0)*250/0.15).astype(np.uint8)#(im.max()-im.min()) # min is 0 max is 0.2
+#    im = ((im+0)*250/0.15).astype(np.uint8)#(im.max()-im.min()) # min is 0 max is 0.2
+    im = ((im+0)*200/0.15).astype(np.uint8)#(im.max()-im.min()) # min is 0 max is 0.2
 
     print(im.min(),np.average(im),im.max())
     print("saving in ",folder+im_name[:-4]+'.png')
